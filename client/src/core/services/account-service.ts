@@ -2,16 +2,16 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { LoginCreds, RegisterCreds, User } from '../../types/user';
 import { tap } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AccountService {
+  private readonly baseUrl = environment.apiUrl;
   // This service is responsible for handling user account operations such as login, registration, and profile management.
   private readonly http = inject(HttpClient);
   currentUser = signal<User|null>(null); // Signal to hold the current user data, initialized to null.
-
-  baseUrl = 'https://localhost:5001/api/';
 
   register(creds: RegisterCreds) {
     return this.http.post<User>(this.baseUrl + 'account/register', creds).pipe(
