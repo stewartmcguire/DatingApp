@@ -7,6 +7,7 @@ import { InitService } from '../core/services/init-service';
 import { lastValueFrom } from 'rxjs';
 import { errorInterceptor } from '../core/interceptors/error-interceptor';
 import { jwtInterceptor } from '../core/interceptors/jwt-interceptor';
+import { loadingInterceptor } from '../core/interceptors/loading-interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -15,7 +16,8 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withViewTransitions()),
     provideHttpClient(withInterceptors([
       errorInterceptor,
-      jwtInterceptor
+      jwtInterceptor,
+      loadingInterceptor
     ])),
     provideAppInitializer(async () => {
       const initService = inject(InitService);

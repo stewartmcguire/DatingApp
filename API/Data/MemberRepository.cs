@@ -33,4 +33,12 @@ public class MemberRepository(AppDbContext context) : IMemberRepository
     {
         context.Entry(member).State = EntityState.Modified;
     }
+
+    public Task<Member?> GetMemberForUpdate(string id)
+    {
+        return context.Members
+            .Include(m => m.User)
+            .SingleOrDefaultAsync(m => m.Id == id);
+    }
+
 }
