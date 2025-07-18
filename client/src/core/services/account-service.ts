@@ -32,6 +32,7 @@ export class AccountService {
 
   logout() {
     localStorage.removeItem('user'); // Remove user data from local storage on logout.
+    localStorage.removeItem('filters'); // Clear any stored filters.
     this.currentUser.set(null);
   }
 
