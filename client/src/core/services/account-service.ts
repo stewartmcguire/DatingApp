@@ -3,15 +3,17 @@ import { inject, Injectable, signal } from '@angular/core';
 import { LoginCreds, RegisterCreds, User } from '../../types/user';
 import { tap } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { LikesService } from './likes-service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AccountService {
-  private readonly baseUrl = environment.apiUrl;
-  // This service is responsible for handling user account operations such as login, registration, and profile management.
   private readonly http = inject(HttpClient);
+  private readonly likesService = inject(LikesService);
+  // This service is responsible for handling user account operations such as login, registration, and profile management.
   currentUser = signal<User|null>(null); // Signal to hold the current user data, initialized to null.
+  private readonly baseUrl = environment.apiUrl;
 
   register(creds: RegisterCreds) {
     return this.http.post<User>(this.baseUrl + 'account/register', creds).pipe(
@@ -33,6 +35,7 @@ export class AccountService {
   logout() {
     localStorage.removeItem('user'); // Remove user data from local storage on logout.
     localStorage.removeItem('filters'); // Clear any stored filters.
+    this.likesService.clearLikeIds(); // Clear the like Ids when logging out.
     this.currentUser.set(null);
   }
 
@@ -40,5 +43,6 @@ export class AccountService {
     // This method is used to set the current user in the service.
     this.currentUser.set(user);
     localStorage.setItem('user', JSON.stringify(user)); // Store the user data in local storage.
+    this.likesService.getLikeIds();
   }
 }
