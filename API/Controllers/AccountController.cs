@@ -6,62 +6,102 @@ using API.Entities;
 using API.Extensions;
 using API.Interfaces;
 using API.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;
 
 namespace API.Controllers
 {
-    public class AccountController(AppDbContext context, ITokenService tokenService) : BaseApiController
+    public class AccountController(UserManager<AppUser> userManager, ITokenService tokenService) : BaseApiController
     {
         [HttpPost("register")] // POST: api/account/register
         public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto)
         {
-            if (await EmailExists(registerDto.Email))
-            {
-                return BadRequest("Email already exists");
-            }
-            using var hmac = new HMACSHA512();
             var user = new AppUser
             {
-                Email = registerDto.Email,
                 DisplayName = registerDto.DisplayName,
-                PasswordHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(registerDto.Password)),
-                PasswordSalt = hmac.Key,
+                Email = registerDto.Email,
+                UserName = registerDto.Email,
                 Member = new Member
                 {
                     DisplayName = registerDto.DisplayName,
                     Gender = registerDto.Gender,
                     City = registerDto.City,
                     Country = registerDto.Country,
-                    DateOfBirth = (DateOnly)registerDto.DateOfBirth
+                    DateOfBirth = (DateOnly)registerDto.DateOfBirth!
                 }
             };
-            context.Users.Add(user);
-            await context.SaveChangesAsync();
 
-            return Ok(user.toDto(tokenService));
+            var result = await userManager.CreateAsync(user, registerDto.Password);
+            if (!result.Succeeded)
+            {
+                foreach (var error in result.Errors)
+                {
+                    ModelState.AddModelError("identity", error.Description);
+                }
+                return ValidationProblem();
+            }
+            await userManager.AddToRoleAsync(user, "Member");
+
+            await SetRefreshTokenCookie(user);
+
+            return Ok(await user.toDto(tokenService));
         }
 
         [HttpPost("login")] // POST: api/account/login
         public async Task<ActionResult<UserDto>> Login(LoginDto loginDto)
         {
-            var user = await context.Users.SingleOrDefaultAsync(x => x.Email.ToLower() == loginDto.Email.ToLower());
-            if (user == null) return Unauthorized("Invalid email or password");
+            var user = await userManager.FindByEmailAsync(loginDto.Email);
+            if (user == null) return Unauthorized("Invalid email");
 
-            using var hmac = new HMACSHA512(user.PasswordSalt);
-            var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(loginDto.Password));
-            if (!computedHash.SequenceEqual(user.PasswordHash))
+            var result = await userManager.CheckPasswordAsync(user, loginDto.Password);
+            if (!result) return Unauthorized("Invalid password");
+
+            await SetRefreshTokenCookie(user);
+
+            return Ok(await user.toDto(tokenService));
+        }
+
+        [HttpPost("refresh-token")] // POST: api/account/refresh-token
+        public async Task<ActionResult<UserDto>> RefreshToken()
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+            if (string.IsNullOrEmpty(refreshToken))
             {
-                return Unauthorized("Invalid email or password");
+                return NoContent(); // No refresh token provided
             }
 
-            return Ok(user.toDto(tokenService));
+            var user = await userManager.Users
+                .SingleOrDefaultAsync(u => u.RefreshToken == refreshToken && u.RefreshTokenExpiry > DateTime.UtcNow);
+
+            if (user == null)
+            {
+                return Unauthorized("Invalid or expired refresh token");
+            }
+
+            await SetRefreshTokenCookie(user);
+
+            return Ok(await user.toDto(tokenService));
         }
 
-        private async Task<bool> EmailExists(string email)
+        private async Task SetRefreshTokenCookie(AppUser user)
         {
-            return await context.Users.AnyAsync(x => x.Email.ToLower() == email.ToLower());
+            var refreshToken = tokenService.GenerateRefreshToken();
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+            await userManager.UpdateAsync(user);
+
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true, // Set to true in production
+                SameSite = SameSiteMode.Strict, // CORS protection
+                Expires = user.RefreshTokenExpiry
+            };
+
+            Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
         }
+
     }
 }
