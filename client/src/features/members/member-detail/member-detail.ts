@@ -5,6 +5,7 @@ import { filter } from 'rxjs';
 import { Member } from '../../../types/member';
 import { AgePipe } from '../../../core/pipes/age-pipe';
 import { AccountService } from '../../../core/services/account-service';
+import { PresenceService } from '../../../core/services/presence-service';
 
 @Component({
   selector: 'app-member-detail',
@@ -15,6 +16,7 @@ import { AccountService } from '../../../core/services/account-service';
 export class MemberDetail implements OnInit {
   protected readonly memberService = inject(MemberService);
   private readonly accountService = inject(AccountService);
+  protected readonly presenceService = inject(PresenceService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected title = signal<string|undefined>('Profile');

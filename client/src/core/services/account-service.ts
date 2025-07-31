@@ -4,6 +4,8 @@ import { LoginCreds, RegisterCreds, User } from '../../types/user';
 import { tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { LikesService } from './likes-service';
+import { PresenceService } from './presence-service';
+import { HubConnectionState } from '@microsoft/signalr';
 
 @Injectable({
   providedIn: 'root',
@@ -11,6 +13,7 @@ import { LikesService } from './likes-service';
 export class AccountService {
   private readonly http = inject(HttpClient);
   private readonly likesService = inject(LikesService);
+  private readonly presenceService = inject(PresenceService);
   // This service is responsible for handling user account operations such as login, registration, and profile management.
   currentUser = signal<User | null>(null); // Signal to hold the current user data, initialized to null.
   private readonly baseUrl = environment.apiUrl;
@@ -47,6 +50,7 @@ export class AccountService {
     localStorage.removeItem('filters'); // Clear any stored filters.
     this.likesService.clearLikeIds(); // Clear the like Ids when logging out.
     this.currentUser.set(null);
+    this.presenceService.stopHubConnection();
   }
 
   refreshToken() {
@@ -77,6 +81,9 @@ export class AccountService {
     this.currentUser.set(user);
     //    localStorage.setItem('user', JSON.stringify(user)); // Store the user data in local storage.
     this.likesService.getLikeIds();
+    if (this.presenceService.hubConnection?.state !== HubConnectionState.Connected) {
+      this.presenceService.createHubConnection(user); // Create a SignalR hub connection if not already connected.
+    }
   }
 
   private getRolesFromToken(user: User): string[] {

@@ -49,7 +49,7 @@
               <div class="h-12 w-12">
                 <img
                   class="rounded-full"
-                  [src]="isInbox ? msg.senderImageUrl : msg.recipientImageUrl"
+                  [src]="isInbox ? msg.senderImageUrl || '/user.png' : msg.recipientImageUrl || '/user.png'"
                   alt="Image of member"
                 />
               </div>
