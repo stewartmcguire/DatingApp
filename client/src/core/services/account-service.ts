@@ -46,11 +46,19 @@ export class AccountService {
   }
 
   logout() {
-    //    localStorage.removeItem('user'); // Remove user data from local storage on logout.
-    localStorage.removeItem('filters'); // Clear any stored filters.
-    this.likesService.clearLikeIds(); // Clear the like Ids when logging out.
-    this.currentUser.set(null);
-    this.presenceService.stopHubConnection();
+    this.http.post(this.baseUrl + 'account/logout', {}, {
+      withCredentials: true,
+    }).subscribe({
+      next: () => {
+        localStorage.removeItem('filters'); // Clear any stored filters.
+        this.likesService.clearLikeIds(); // Clear the like Ids when logging out.
+        this.currentUser.set(null);
+        this.presenceService.stopHubConnection();
+      },
+      error: (error) => {
+        console.error('Logout error:', error);
+      }
+    });
   }
 
   refreshToken() {

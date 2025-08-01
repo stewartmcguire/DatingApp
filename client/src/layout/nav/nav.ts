@@ -21,6 +21,7 @@ export class Nav implements OnInit {
   private readonly toast = inject(ToastService); // Injecting a toast service for notifications
   protected selectedTheme = signal<string>(localStorage.getItem('theme') || 'light');
   protected themes = themes;
+  protected isLoading = signal<boolean>(false); // Signal to manage loading state
 
   ngOnInit(): void {
     document.documentElement.setAttribute('data-theme', this.selectedTheme()); // Apply the theme to the document
@@ -36,7 +37,15 @@ export class Nav implements OnInit {
     }
   }
 
+  handleSelectUserItem() {
+    const elem = document.activeElement as HTMLDivElement;
+    if (elem) {
+      elem.blur(); // Remove focus from the dropdown to prevent it from staying open
+    }
+  }
+
   login() {
+    this.isLoading.set(true); // Set loading state to true
     this.accountService.login(this.creds).subscribe({
       next: (response) => {
         this.router.navigateByUrl('/members'); // Navigate to members page after successful login
@@ -47,6 +56,7 @@ export class Nav implements OnInit {
         this.toast.error(error); // Show error toast on login failure
       },
       complete: () => {
+        this.isLoading.set(false); // Reset loading state after login attempt
       }
     });
     // Here you would typically call a service to handle the login

@@ -21,18 +21,7 @@ export class MemberCard {
   toggleLike(event: Event) {
     // Prevents click from being propagated to the parent elements.
     event.stopPropagation();
-    this.likeService.toggleLike(this.member().id).subscribe({
-      next: () => {
-        if (this.hasLiked()) {
-          this.likeService.likeIds.update(ids => ids.filter(id => id !== this.member().id));
-        } else {
-          this.likeService.likeIds.update(ids => [...ids, this.member().id]);
-        }
-      },
-      error: (error) => {
-        console.error('Error toggling like:', error);
-      }
-    });
+    this.likeService.toggleLike(this.member().id);
   }
 
 }

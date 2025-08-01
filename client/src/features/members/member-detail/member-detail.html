@@ -11,7 +11,7 @@
         <div class="flex text-2xl text-primary items-center">
           {{ member.displayName }}, {{ member.dateOfBirth | age }}
           @if (presenceService.onlineUsers().includes(member.id)) {
-            <span class="status status-success status-xl ml-3"></span>
+          <span class="status status-success status-xl ml-3"></span>
           }
         </div>
         <div class="text-sm">{{ member.city }}, {{ member.country }}</div>
@@ -31,8 +31,15 @@
       </ul>
     </div>
     <div class="card-actions justify-between gap-2 px-2 mb-3">
-      <button class="btn btn-info flex-1" (click)="goBack()">Go Back</button>
-      <button class="btn btn-primary flex-1">Like User</button>
+      <button class="btn btn-info flex-1" routerLink="/members">Go Back</button>
+      <button
+        (click)="likesService.toggleLike(member.id)"
+        class="btn flex-1"
+        [class.btn-error]="hasLiked()"
+        [class.btn-success]="!hasLiked()"
+      >
+        {{ hasLiked() ? "Unlike User" : "Like User" }}
+      </button>
     </div>
   </div>
 
@@ -44,7 +51,7 @@
         class="btn btn-outline btn-primary"
         (click)="memberService.editMode.set(!memberService.editMode())"
       >
-        {{ memberService.editMode() ? 'Cancel' : 'Edit' }}
+        {{ memberService.editMode() ? "Cancel" : "Edit" }}
       </button>
       }
     </div>
