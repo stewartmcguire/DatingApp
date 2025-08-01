@@ -12,7 +12,7 @@ namespace API.Controllers
     [Authorize]
     // localhost:5001/api/members
     public class MembersController(
-        IMemberRepository memberRepository,
+        IUnitOfWork uow,
         IPhotoService photoService
     ) : BaseApiController
     {
@@ -23,13 +23,13 @@ namespace API.Controllers
         {
             memberParams.CurrentMemberId = User.GetMemberId();
 
-            return Ok(await memberRepository.GetMembersAsync(memberParams));
+            return Ok(await uow.MemberRepository.GetMembersAsync(memberParams));
         }
 
         [HttpGet("{id}")]     // localhost:5001/api/members/john-id
         public async Task<ActionResult<Member>> GetMember(string id)
         {
-            var member = await memberRepository.GetMemberByIdAsync(id);
+            var member = await uow.MemberRepository.GetMemberByIdAsync(id);
             if (member == null) return NotFound();
             return Ok(member);
         }
@@ -37,14 +37,14 @@ namespace API.Controllers
         [HttpGet("{id}/photos")]
         public async Task<ActionResult<IReadOnlyList<Photo>>> GetMemberPhotos(string id)
         {
-            return Ok(await memberRepository.GetPhotosForMemberAsync(id));
+            return Ok(await uow.MemberRepository.GetPhotosForMemberAsync(id));
         }
 
         [HttpPut]
         public async Task<ActionResult> UpdateMember(MemberUpdateDto memberUpdateDto)
         {
             var memberId = User.GetMemberId();
-            var member = await memberRepository.GetMemberForUpdate(memberId);
+            var member = await uow.MemberRepository.GetMemberForUpdate(memberId);
             if (member == null) return NotFound("Member not found");
 
             member.DisplayName = memberUpdateDto.DisplayName ?? member.DisplayName;
@@ -54,16 +54,16 @@ namespace API.Controllers
 
             member.User.DisplayName = memberUpdateDto.DisplayName ?? member.User.DisplayName;
 
-            memberRepository.Update(member);
+            uow.MemberRepository.Update(member);
 
-            if (await memberRepository.SaveAllAsync()) return NoContent();
+            if (await uow.Complete()) return NoContent();
             return BadRequest("Failed to update the member");
         }
 
         [HttpPost("add-photo")]
         public async Task<ActionResult<Photo>> AddPhoto([FromForm] IFormFile file)
         {
-            var member = await memberRepository.GetMemberForUpdate(User.GetMemberId());
+            var member = await uow.MemberRepository.GetMemberForUpdate(User.GetMemberId());
             if (member == null) return BadRequest("Cannot update member");
 
             var result = await photoService.UploadPhotoAsync(file);
@@ -83,7 +83,7 @@ namespace API.Controllers
             }
 
             member.Photos.Add(photo);
-            if (await memberRepository.SaveAllAsync())
+            if (await uow.Complete())
                 return photo;
             // CreatedAtAction(nameof(GetMember), new { id = member.Id }, photo);
             return BadRequest("Failed to add photo");
@@ -92,7 +92,7 @@ namespace API.Controllers
         [HttpPut("set-main-photo/{photoId}")]
         public async Task<ActionResult> SetMainPhoto(int photoId)
         {
-            var member = await memberRepository.GetMemberForUpdate(User.GetMemberId());
+            var member = await uow.MemberRepository.GetMemberForUpdate(User.GetMemberId());
             if (member == null) return BadRequest("Cannot find member");
 
             var photo = member.Photos.SingleOrDefault(p => p.Id == photoId);
@@ -106,7 +106,7 @@ namespace API.Controllers
             member.ImageUrl = photo.Url;
             member.User.ImageUrl = photo.Url;
 
-            if (await memberRepository.SaveAllAsync())
+            if (await uow.Complete())
             {
                 return NoContent();
             }
@@ -116,7 +116,7 @@ namespace API.Controllers
         [HttpDelete("delete-photo/{photoId}")]
         public async Task<ActionResult> DeletePhoto(int photoId)
         {
-            var member = await memberRepository.GetMemberForUpdate(User.GetMemberId());
+            var member = await uow.MemberRepository.GetMemberForUpdate(User.GetMemberId());
             if (member == null) return BadRequest("Cannot find member");
 
             var photo = member.Photos.SingleOrDefault(p => p.Id == photoId);
@@ -130,7 +130,7 @@ namespace API.Controllers
             }
 
             member.Photos.Remove(photo);
-            if (await memberRepository.SaveAllAsync())
+            if (await uow.Complete())
             {
                 return NoContent();
             }

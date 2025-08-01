@@ -60,8 +60,8 @@ public class LikesRepository(AppDbContext context): ILikesRepository
         context.Likes.Add(like);
     }
 
-    public async Task<bool> SaveAllChanges()
+/*     public async Task<bool> SaveAllChanges()
     {
         return await context.SaveChangesAsync() > 0;
-    }
+    } */
 }
